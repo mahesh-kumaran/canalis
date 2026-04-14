@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obsidian Lab — Dental Simulation Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f11;
+    --bg2: #141518;
+    --bg3: #1c1d21;
+    --bg4: #24252a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0ee;
+    --text2: #9a9b9f;
+    --text3: #5a5b60;
+    --green: #1fcb7a;
+    --green-dim: rgba(31,203,122,0.12);
+    --green-border: rgba(31,203,122,0.3);
+    --red: #f05252;
+    --red-dim: rgba(240,82,82,0.12);
+    --red-border: rgba(240,82,82,0.3);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --blue: #4a9eff;
+    --blue-dim: rgba(74,158,255,0.1);
+    --accent: #1fcb7a;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ── LANDING ── */
+  #screen-landing {
+    align-items: center; justify-content: center;
+    background: var(--bg);
+    position: relative; overflow: hidden;
+  }
+  #screen-landing::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 60%, rgba(31,203,122,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .landing-inner { text-align: center; z-index: 1; }
+  .landing-logo { font-size: 13px; font-weight: 500; color: var(--text2); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 40px; }
+  .landing-logo span { color: var(--accent); }
+  .landing-title { font-size: 48px; font-weight: 300; letter-spacing: -1.5px; color: var(--text); line-height: 1.1; margin-bottom: 16px; }
+  .landing-title strong { font-weight: 600; color: var(--accent); }
+  .landing-sub { font-size: 15px; color: var(--text2); margin-bottom: 48px; font-weight: 300; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .btn-primary { background: var(--accent); color: #050f08; font-family: var(--font); font-size: 14px; font-weight: 600; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.01em; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.98); }
+  .landing-dots { display: flex; gap: 24px; justify-content: center; margin-top: 56px; }
+  .landing-dot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); }
+  .landing-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
+
+  /* ── APP SHELL ── */
+  .app-shell { display: flex; flex-direction: column; height: 100vh; }
+  .topbar { display: flex; align-items: center; gap: 0; padding: 0 20px; height: 48px; border-bottom: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
+  .topbar-logo { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.04em; margin-right: 32px; }
+  .topbar-logo span { color: var(--accent); }
+  .topbar-nav { display: flex; gap: 0; }
+  .topbar-nav a { font-size: 13px; padding: 0 14px; height: 48px; display: flex; align-items: center; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s; text-decoration: none; }
+  .topbar-nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+  .topbar-nav a:hover { color: var(--text); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .timer { font-family: var(--mono); font-size: 12px; color: var(--text2); background: var(--bg3); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); }
+  .btn-end { background: transparent; border: 1px solid var(--border2); color: var(--text2); font-family: var(--font); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .btn-end:hover { border-color: var(--red); color: var(--red); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--bg4); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text2); }
+
+  /* ── SIMULATION LAYOUT ── */
+  .sim-body { display: flex; flex: 1; overflow: hidden; }
+  .sim-sidebar { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; }
+  .patient-card { padding: 16px; border-bottom: 1px solid var(--border); }
+  .patient-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg4); border: 1px solid var(--border2); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .patient-case { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .patient-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .patient-status { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--green); margin-top: 4px; }
+  .patient-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .sidebar-nav { padding: 8px; flex: 1; }
+  .sidebar-nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 12px; font-weight: 500; transition: all 0.15s; margin-bottom: 2px; }
+  .sidebar-nav-item:hover { background: var(--bg3); color: var(--text); }
+  .sidebar-nav-item.active { background: var(--bg3); color: var(--text); }
+  .sidebar-nav-item svg { width: 14px; height: 14px; opacity: 0.6; flex-shrink: 0; }
+  .sidebar-nav-item.active svg { opacity: 1; }
+  .sidebar-bottom { padding: 12px; border-top: 1px solid var(--border); }
+  .btn-emergency { width: 100%; background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); font-family: var(--font); font-size: 12px; font-weight: 600; padding: 9px; border-radius: 7px; cursor: pointer; letter-spacing: 0.03em; transition: all 0.15s; }
+  .btn-emergency:hover { background: rgba(240,82,82,0.2); }
+
+  /* ── CHAT PANEL ── */
+  .chat-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .chat-header { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .chat-header h2 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .chat-header p { font-size: 12px; color: var(--text2); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  .msg-sender { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .msg-sender::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .msg-bubble { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; border-top-left-radius: 2px; padding: 12px 14px; font-size: 13px; color: var(--text); line-height: 1.6; max-width: 72%; }
+  .msg-doctor { align-self: flex-end; }
+  .msg-doctor .msg-bubble { background: var(--bg4); border-color: var(--border2); border-radius: 10px; border-bottom-right-radius: 2px; }
+  .msg-time { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .msg-doctor .msg-time { text-align: right; }
+  .clinical-obs { background: var(--red-dim); border: 1px solid var(--red-border); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start; }
+  .obs-icon { width: 16px; height: 16px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .obs-icon::after { content: '!'; font-size: 10px; font-weight: 700; color: #fff; }
+  .obs-title { font-size: 11px; font-weight: 600; color: var(--red); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .obs-body { font-size: 12px; color: var(--text2); }
+  .diag-tip { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.2); border-radius: 8px; padding: 10px 14px; align-self: flex-end; max-width: 280px; }
+  .diag-tip-label { font-size: 10px; font-weight: 600; color: var(--blue); margin-bottom: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .diag-tip p { font-size: 12px; color: var(--text2); line-height: 1.5; font-style: italic; }
+  .chat-input-bar { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+  .chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 14px; font-family: var(--font); font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .chat-input::placeholder { color: var(--text3); }
+  .chat-input:focus { border-color: var(--accent); }
+  .btn-send { background: var(--accent); border: none; border-radius: 8px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
+  .btn-send:hover { opacity: 0.85; }
+  .btn-send svg { width: 14px; height: 14px; fill: #050f08; }
+  .vitals-bar { background: var(--bg3); border-left: 1px solid var(--border); width: 180px; flex-shrink: 0; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .vitals-title { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .vital-item label { font-size: 10px; color: var(--text3); display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .vital-value { font-size: 20px; font-weight: 500; color: var(--text); font-family: var(--mono); }
+  .vital-unit { font-size: 11px; color: var(--text3); margin-left: 2px; }
+  .pain-bar { margin-top: 6px; }
+  .pain-track { height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .pain-fill { height: 100%; background: var(--amber); border-radius: 3px; width: 70%; }
+  .pain-label { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  /* ── IMAGING TAB ── */
+  .imaging-panel { flex: 1; display: flex; overflow: hidden; }
+  .img-thumbs { width: 120px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--bg); overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .img-thumb { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: border-color 0.15s; }
+  .img-thumb:hover { border-color: var(--border2); }
+  .img-thumb.active { border-color: var(--accent); }
+  .img-thumb-img { height: 64px; background: #0a0a0a; display: flex; align-items: center; justify-content: center; }
+  .img-thumb-label { font-size: 10px; color: var(--text2); padding: 5px 7px; background: var(--bg3); }
+  .img-viewer { flex: 1; display: flex; flex-direction: column; }
+  .img-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .tool-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); font-family: var(--font); font-size: 11px; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .tool-btn:hover { border-color: var(--border2); color: var(--text); }
+  .tool-btn.active { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+  .tool-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+  .img-main { flex: 1; background: #050505; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .img-footer { padding: 8px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--bg); }
+  .img-footer-info { font-size: 11px; color: var(--text3); flex: 1; font-family: var(--mono); }
+  .ai-toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+  .toggle { width: 30px; height: 17px; background: var(--bg4); border-radius: 9px; position: relative; cursor: pointer; transition: background 0.2s; border: 1px solid var(--border2); }
+  .toggle.on { background: var(--green-dim); border-color: var(--green-border); }
+  .toggle-knob { position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; background: var(--text3); border-radius: 50%; transition: all 0.2s; }
+  .toggle.on .toggle-knob { transform: translateX(13px); background: var(--accent); }
+  .zoom-val { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 36px; text-align: right; }
+
+  /* ── ANALYTICS ── */
+  .analytics-panel { flex: 1; overflow-y: auto; padding: 24px; }
+  .analytics-panel::-webkit-scrollbar { width: 4px; }
+  .analytics-panel::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  .section-header { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+  .metric-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+  .metric-val { font-size: 26px; font-weight: 500; color: var(--text); font-family: var(--mono); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .metric-sub.up { color: var(--green); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .chart-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .chart-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-label { font-size: 11px; color: var(--text2); width: 120px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-pct { font-size: 11px; color: var(--text2); width: 30px; text-align: right; font-family: var(--mono); }
+  .mini-bars { display: flex; align-items: flex-end; gap: 6px; height: 60px; }
+  .mini-bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 4px; }
+  .mini-bar-labels { display: flex; gap: 6px; margin-top: 6px; }
+  .mini-bar-label { flex: 1; font-size: 9px; color: var(--text3); text-align: center; font-family: var(--mono); }
+  .sessions-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 24px; }
+  .session-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .session-row:last-child { border-bottom: none; }
+  .badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; letter-spacing: 0.04em; }
+  .badge-pass { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-review { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .badge-fail { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
+  .session-name { font-size: 12px; color: var(--text); flex: 1; }
+  .session-score { font-size: 13px; font-weight: 500; color: var(--text); font-family: var(--mono); }
+  .session-time { font-size: 11px; color: var(--text3); font-family: var(--mono); width: 42px; text-align: right; }
+  .comp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .comp-cell { background: var(--bg4); border-radius: 8px; padding: 12px; text-align: center; }
+  .comp-name { font-size: 10px; color: var(--text3); margin-bottom: 8px; }
+  .comp-pct-val { font-size: 16px; font-weight: 500; font-family: var(--mono); }
+
+  /* ── EMERGENCY ── */
+  .emergency-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; align-items: stretch; }
+  .emergency-overlay.active { display: flex; }
+  .emergency-primary { flex: 1; display: flex; flex-direction: column; }
+  .emergency-panel { width: 340px; background: var(--bg2); border-left: 1px solid var(--red-border); display: flex; flex-direction: column; }
+  .emg-header { padding: 16px 20px; border-bottom: 1px solid var(--red-border); display: flex; align-items: center; gap: 12px; }
+  .emg-badge { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; }
+  .emg-title { font-size: 16px; font-weight: 600; color: var(--red); }
+  .emg-sub { font-size: 11px; color: var(--text2); }
+  .emg-body { flex: 1; padding: 20px; overflow-y: auto; }
+  .emg-patient-name { font-size: 22px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .emg-location { font-size: 12px; color: var(--text2); margin-bottom: 20px; }
+  .emg-image { background: #0a0f0a; border-radius: 10px; height: 160px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .emg-alert-quote { background: var(--red-dim); border: 1px solid var(--red-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .emg-alert-quote p { font-size: 13px; color: var(--text); font-style: italic; line-height: 1.6; }
+  .emg-distress { font-size: 10px; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 8px; }
+  .emg-vitals { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  .emg-vitals-title { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .emg-vitals-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .emg-vital { text-align: center; }
+  .emg-vital-val { font-size: 20px; font-weight: 500; font-family: var(--mono); }
+  .emg-vital-val.danger { color: var(--red); }
+  .emg-vital-val.warn { color: var(--amber); }
+  .emg-vital-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
+  .emg-log { font-size: 11px; color: var(--text2); margin-bottom: 16px; }
+  .emg-log time { color: var(--text3); font-family: var(--mono); }
+  .emg-actions { display: flex; gap: 8px; padding: 16px; border-top: 1px solid var(--border); }
+  .btn-emg-action { flex: 1; padding: 10px; border-radius: 8px; font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+  .btn-epinephrine { background: var(--amber-dim); border-color: rgba(245,166,35,0.3); color: var(--amber); }
+  .btn-epinephrine:hover { background: rgba(245,166,35,0.2); }
+  .btn-intubate { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
+  .btn-intubate:hover { background: rgba(240,82,82,0.2); }
+  .emg-input-bar { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  .emg-input { flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: 7px; padding: 8px 12px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none; }
+  .emg-input:focus { border-color: var(--red); }
+  .btn-emg-send { background: var(--red); border: none; border-radius: 7px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .btn-emg-send svg { width: 12px; height: 12px; fill: #fff; }
+  .close-emergency { background: transparent; border: 1px solid var(--border2); color: var(--text2); font-family: var(--font); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; margin-left: auto; }
+  .close-emergency:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── TABS CONTENT ── */
+  .tab-content { display: none; flex: 1; overflow: hidden; }
+  .tab-content.active { display: flex; }
+
+  /* scrollbar global */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+  /* pulse animation for emergency button */
+  @keyframes pulse-red { 0%,100% { box-shadow: 0 0 0 0 rgba(240,82,82,0.4); } 50% { box-shadow: 0 0 0 6px rgba(240,82,82,0); } }
+  .btn-emergency { animation: pulse-red 2.5s ease infinite; }
+
+  /* typing indicator */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: bounce 1.2s ease infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+  /* fade-in for messages */
+  @keyframes fadeUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+  .msg-in { animation: fadeUp 0.25s ease; }
+</style>
+</head>
+<body>
+
+<!-- LANDING SCREEN -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-inner">
+    <div class="landing-logo"><span>Obsidian</span> Lab</div>
+    <div class="landing-title">Clinical simulation<br>for <strong>dental education</strong></div>
+    <p class="landing-sub">Train on real patient scenarios, emergencies, and clinical imaging — without the patient.</p>
+    <button class="btn-primary" onclick="goTo('screen-sim')">Start simulation ↗</button>
+    <div class="landing-dots">
+      <span class="landing-dot">AI-powered patients</span>
+      <span class="landing-dot">Clinical imaging</span>
+      <span class="landing-dot">Emergency scenarios</span>
+      <span class="landing-dot">Progress analytics</span>
+    </div>
+  </div>
+</div>
+
+<!-- SIMULATION SCREEN -->
+<div id="screen-sim" class="screen app-shell">
+  <div class="topbar">
+    <div class="topbar-logo"><span>Obsidian</span> Lab</div>
+    <nav class="topbar-nav">
+      <a class="active" onclick="switchTopNav(this, 'screen-sim')">Simulation</a>
+      <a onclick="switchTopNav(this, 'screen-analytics')">Analytics</a>
+      <a onclick="switchTopNav(this, 'screen-library')">Library</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="timer" id="timer">00:12:34</div>
+      <button class="btn-end" onclick="goTo('screen-landing')">End session</button>
+      <div class="avatar">DS</div>
+    </div>
+  </div>
+
+  <div class="sim-body">
+    <!-- Sidebar -->
+    <div class="sim-sidebar">
+      <div class="patient-card">
+        <div class="patient-avatar">👤</div>
+        <div class="patient-case">Case #8821</div>
+        <div class="patient-name">Mr. Arthur Miller</div>
+        <div class="patient-status">Active simulation</div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="sidebar-nav-item active" onclick="switchTab('tab-chat', this)">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v9H9l-3 3v-3H2z"/></svg>
+          Patient chart
+        </div>
+        <div class="sidebar-nav-item" onclick="switchTab('tab-notes', this)">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v12H3zM5 5h6M5 7h6M5 9h4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+          Clinical notes
+        </div>
+        <div class="sidebar-nav-item" onclick="switchTab('tab-vitals', this)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h2l2-4 2 8 2-4 2 3h2"/></svg>
+          Vitals
+        </div>
+        <div class="sidebar-nav-item" onclick="switchTab('tab-imaging', this)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3"/></svg>
+          Imaging
+        </div>
+        <div class="sidebar-nav-item" onclick="switchTab('tab-treatment', this)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 2v12M2 8h12"/></svg>
+          Treatment plan
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="btn-emergency" onclick="showEmergency()">⚠ Emergency protocol</button>
+      </div>
+    </div>
+
+    <!-- TAB: Chat -->
+    <div id="tab-chat" class="tab-content active">
+      <div class="chat-panel">
+        <div class="chat-header">
+          <h2>Patient intake</h2>
+          <p>Analyse symptoms described by Mr. Miller to begin your clinical diagnosis. Look for signs of pulpitis or sensitivity triggers.</p>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="msg-in">
+            <div class="msg-sender">Mr. Arthur Miller</div>
+            <div class="msg-bubble">Good morning, Doctor. I've been having this really sharp pain in my upper left side, near the back. It started about two days ago.</div>
+            <div class="msg-time">09:41 AM</div>
+          </div>
+          <div class="diag-tip msg-in">
+            <div class="diag-tip-label">Diagnostic tip</div>
+            <p>"Localized sharp pain to cold often indicates reversible pulpitis, but lingering pain suggests the pulp may be irreversibly damaged."</p>
+          </div>
+          <div class="msg-doctor msg-in">
+            <div class="msg-bubble">I'm sorry to hear that, Mr. Miller. Can you tell me if anything specific triggers the pain? For example, eating, drinking hot or cold liquids, or biting down?</div>
+            <div class="msg-time">09:42 AM</div>
+          </div>
+          <div class="msg-in">
+            <div class="msg-sender">Mr. Arthur Miller</div>
+            <div class="msg-bubble">It's definitely the cold. I tried to have some iced tea this morning and it felt like a lightning bolt went through my molar. It lingers for a few seconds and then settles into a dull ache.</div>
+            <div class="msg-time">09:43 AM</div>
+          </div>
+          <div class="clinical-obs msg-in">
+            <div class="obs-icon"></div>
+            <div>
+              <div class="obs-title">Clinical observation</div>
+              <div class="obs-body">Patient reports lingering pain (&gt;15s). Consider irreversible pulpitis protocol.</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="chat-input" placeholder="Ask Mr. Miller a clinical question..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+          <button class="btn-send" onclick="sendMsg()">
+            <svg viewBox="0 0 16 16"><path d="M1 8L15 1 9 15 7 9z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="vitals-bar">
+        <div class="vitals-title">Patient vitals</div>
+        <div class="vital-item">
+          <label>Pain intensity</label>
+          <div class="vital-value">7<span class="vital-unit">/10</span></div>
+          <div class="pain-bar">
+            <div class="pain-track"><div class="pain-fill"></div></div>
+            <div class="pain-label">Moderate–severe</div>
+          </div>
+        </div>
+        <div class="vital-item">
+          <label>Heart rate</label>
+          <div class="vital-value">84<span class="vital-unit">bpm</span></div>
+        </div>
+        <div class="vital-item">
+          <label>Temperature</label>
+          <div class="vital-value">98.6<span class="vital-unit">°F</span></div>
+        </div>
+        <div class="vital-item">
+          <label>BP</label>
+          <div class="vital-value" style="font-size:16px;">124/80<span class="vital-unit">mmHg</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Imaging -->
+    <div id="tab-imaging" class="tab-content">
+      <div class="imaging-panel">
+        <div class="img-thumbs">
+          <div class="img-thumb active" onclick="selectImg(0,this)">
+            <div class="img-thumb-img">
+              <svg width="104" height="64" viewBox="0 0 104 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="104" height="64" fill="#080808"/>
+                <ellipse cx="52" cy="22" rx="20" ry="16" fill="#181818" stroke="#3a3a3a" stroke-width="0.5"/>
+                <rect x="32" y="30" width="40" height="28" rx="3" fill="#111" stroke="#2a2a2a" stroke-width="0.5"/>
+                <rect x="36" y="35" width="8" height="16" rx="1" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="47" y="35" width="8" height="16" rx="1" fill="#181818" stroke="#444" stroke-width="0.3"/>
+                <rect x="58" y="35" width="8" height="16" rx="1" fill="#141414" stroke="#555" stroke-width="0.3"/>
+                <ellipse cx="62" cy="47" r="3.5" fill="none" stroke="#666" stroke-width="0.7" opacity="0.8"/>
+              </svg>
+            </div>
+            <div class="img-thumb-label">Periapical</div>
+          </div>
+          <div class="img-thumb" onclick="selectImg(1,this)">
+            <div class="img-thumb-img">
+              <svg width="104" height="64" viewBox="0 0 104 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="104" height="64" fill="#060606"/>
+                <ellipse cx="52" cy="32" rx="46" ry="20" fill="#111" stroke="#2a2a2a" stroke-width="0.5"/>
+                <rect x="8" y="25" width="88" height="14" rx="2" fill="#161616"/>
+                <rect x="12" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="22" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="32" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="44" y="27" width="7" height="10" rx="1" fill="#181818" stroke="#444" stroke-width="0.3"/>
+                <rect x="55" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="66" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+                <rect x="77" y="27" width="7" height="10" rx="1" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.3"/>
+              </svg>
+            </div>
+            <div class="img-thumb-label">Panoramic OPG</div>
+          </div>
+          <div class="img-thumb" onclick="selectImg(2,this)">
+            <div class="img-thumb-img" style="background:#100808;">
+              <svg width="104" height="64" viewBox="0 0 104 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="104" height="64" fill="#100808"/>
+                <rect x="16" y="8" width="72" height="48" rx="4" fill="#1e1010"/>
+                <rect x="24" y="14" width="24" height="36" rx="2" fill="#2a1515" stroke="#5a3030" stroke-width="0.5"/>
+                <rect x="56" y="14" width="24" height="36" rx="2" fill="#2a1515" stroke="#5a3030" stroke-width="0.5"/>
+                <ellipse cx="36" cy="22" rx="7" ry="9" fill="#3d2020" stroke="#7a4a4a" stroke-width="0.5"/>
+                <ellipse cx="68" cy="22" rx="7" ry="9" fill="#3d2020" stroke="#7a4a4a" stroke-width="0.5"/>
+              </svg>
+            </div>
+            <div class="img-thumb-label">Clinical photo</div>
+          </div>
+          <div class="img-thumb" onclick="selectImg(3,this)">
+            <div class="img-thumb-img" style="background:#060a06;">
+              <svg width="104" height="64" viewBox="0 0 104 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="104" height="64" fill="#060a06"/>
+                <ellipse cx="52" cy="32" rx="28" ry="20" fill="#0d150d" stroke="#1e3a1e" stroke-width="0.5"/>
+                <ellipse cx="52" cy="32" rx="18" ry="12" fill="#0a120a" stroke="#2a5a2a" stroke-width="0.5"/>
+                <ellipse cx="52" cy="32" rx="8" ry="6" fill="#08100a" stroke="#3a7a3a" stroke-width="0.5"/>
+                <line x1="38" y1="20" x2="66" y2="44" stroke="#1e4a1e" stroke-width="0.5"/>
+                <line x1="66" y1="20" x2="38" y2="44" stroke="#1e4a1e" stroke-width="0.5"/>
+              </svg>
+            </div>
+            <div class="img-thumb-label">CBCT slice</div>
+          </div>
+        </div>
+
+        <div class="img-viewer">
+          <div class="img-toolbar">
+            <button class="tool-btn active" id="tbtn-zoom-in" onclick="imgZoom(1.25)">Zoom in</button>
+            <button class="tool-btn" onclick="imgZoom(0.8)">Zoom out</button>
+            <button class="tool-btn" onclick="imgFit()">Fit</button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn" id="tbtn-annotate" onclick="toggleTool('tbtn-annotate')">Annotate</button>
+            <button class="tool-btn" id="tbtn-measure" onclick="toggleTool('tbtn-measure')">Measure</button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn" id="tbtn-brightness" onclick="toggleTool('tbtn-brightness')">Brightness</button>
+            <button class="tool-btn" id="tbtn-contrast" onclick="toggleTool('tbtn-contrast')">Contrast</button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn" id="tbtn-compare" onclick="toggleTool('tbtn-compare')">Compare view</button>
+          </div>
+          <div class="img-main" id="img-main">
+            <svg id="img-xray" viewBox="0 0 360 280" width="360" height="280" xmlns="http://www.w3.org/2000/svg" style="transition:transform 0.2s;">
+              <rect width="360" height="280" fill="#050505"/>
+              <ellipse cx="180" cy="80" rx="80" ry="62" fill="#141414" stroke="#2a2a2a" stroke-width="0.8"/>
+              <rect x="100" y="110" width="160" height="145" rx="7" fill="#0e0e0e" stroke="#222" stroke-width="0.8"/>
+              <ellipse cx="140" cy="88" rx="24" ry="30" fill="#0c0c0c" stroke="#3a3a3a" stroke-width="0.7"/>
+              <ellipse cx="220" cy="88" rx="24" ry="30" fill="#0c0c0c" stroke="#3a3a3a" stroke-width="0.7"/>
+              <rect x="108" y="122" width="28" height="58" rx="3" fill="#131313" stroke="#333" stroke-width="0.5"/>
+              <rect x="142" y="122" width="28" height="58" rx="3" fill="#131313" stroke="#333" stroke-width="0.5"/>
+              <rect x="176" y="122" width="28" height="58" rx="3" fill="#0f0f0f" stroke="#444" stroke-width="0.5"/>
+              <rect x="210" y="122" width="28" height="58" rx="3" fill="#131313" stroke="#333" stroke-width="0.5"/>
+              <ellipse cx="190" cy="160" rx="10" ry="8" fill="none" stroke="#666" stroke-width="0.9" opacity="0.7"/>
+              <ellipse cx="190" cy="162" rx="5.5" ry="4.5" fill="none" stroke="#555" stroke-width="0.5" opacity="0.6"/>
+              <text x="180" y="271" text-anchor="middle" font-size="8" fill="#333" font-family="monospace">PA-UL7 • 2026-03-26 • 0.2s • 60kV</text>
+            </svg>
+            <div id="ai-boxes" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;transition:opacity 0.3s;">
+              <div style="position:absolute;left:49%;top:35%;width:13%;height:22%;border:1.5px solid #f05252;border-radius:4px;">
+                <span style="position:absolute;top:-18px;left:0;background:#f05252;color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;">Periapical lesion 87%</span>
+              </div>
+              <div style="position:absolute;left:31%;top:30%;width:10%;height:19%;border:1.5px solid #1fcb7a;border-radius:4px;">
+                <span style="position:absolute;top:-18px;left:0;background:#1fcb7a;color:#050f08;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;">Carious lesion 74%</span>
+              </div>
+            </div>
+            <div style="position:absolute;pointer-events:none;">
+              <div style="position:absolute;left:51%;top:42%;width:10px;height:10px;border-radius:50%;border:2px solid #f5a623;background:rgba(245,166,35,0.2);"></div>
+              <div style="position:absolute;left:54%;top:40%;background:rgba(245,166,35,0.9);color:#412402;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;">Periapical abscess?</div>
+            </div>
+          </div>
+          <div class="img-footer">
+            <span class="img-footer-info" id="img-footer-info">PA-UL7 — Periapical X-ray, upper left molar region</span>
+            <div class="ai-toggle-wrap">
+              <span>AI highlights</span>
+              <div class="toggle on" id="ai-toggle-btn" onclick="toggleAIBoxes()"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="zoom-val" id="zoom-val">100%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Notes -->
+    <div id="tab-notes" class="tab-content" style="flex-direction:column;padding:24px;overflow-y:auto;">
+      <div style="max-width:600px;">
+        <div class="section-header" style="margin-bottom:16px;">Clinical notes</div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">09:41 AM — Session start</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.7;">Patient presents with sharp pain in upper left quadrant. Pain onset 2 days ago. Triggered by cold stimulus. Lingering pain > 15 seconds noted.</div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">09:43 AM — Clinical observation</div>
+          <div style="font-size:13px;color:var(--red);line-height:1.7;">⚠ Lingering cold sensitivity > 15s — suggests irreversible pulpitis. Consider RCT.</div>
+        </div>
+        <textarea style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;resize:vertical;min-height:100px;" placeholder="Add your clinical note..."></textarea>
+      </div>
+    </div>
+
+    <!-- TAB: Vitals -->
+    <div id="tab-vitals" class="tab-content" style="flex-direction:column;padding:24px;overflow-y:auto;">
+      <div class="section-header" style="margin-bottom:16px;">Live vitals — Mr. Arthur Miller</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:600px;">
+        <div class="metric-card"><div class="metric-label">Pain scale</div><div class="metric-val">7<span style="font-size:14px;color:var(--text3)">/10</span></div></div>
+        <div class="metric-card"><div class="metric-label">Heart rate</div><div class="metric-val">84<span style="font-size:14px;color:var(--text3)"> bpm</span></div></div>
+        <div class="metric-card"><div class="metric-label">Temperature</div><div class="metric-val">98.6<span style="font-size:14px;color:var(--text3)">°F</span></div></div>
+        <div class="metric-card"><div class="metric-label">Blood pressure</div><div class="metric-val" style="font-size:20px;">124/80</div></div>
+        <div class="metric-card"><div class="metric-label">SpO₂</div><div class="metric-val">98<span style="font-size:14px;color:var(--text3)">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">Resp. rate</div><div class="metric-val">16<span style="font-size:14px;color:var(--text3)">/min</span></div></div>
+      </div>
+    </div>
+
+    <!-- TAB: Treatment -->
+    <div id="tab-treatment" class="tab-content" style="flex-direction:column;padding:24px;overflow-y:auto;">
+      <div class="section-header" style="margin-bottom:16px;">Treatment plan</div>
+      <div style="max-width:600px;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--green-dim);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--green);font-weight:600;flex-shrink:0;">1</div>
+          <div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;">Pulp vitality test</div><div style="font-size:11px;color:var(--text2);">Cold test with endo ice on tooth #26</div></div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--amber-dim);border:1px solid rgba(245,166,35,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--amber);font-weight:600;flex-shrink:0;">2</div>
+          <div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;">Periapical radiograph review</div><div style="font-size:11px;color:var(--text2);">Check for periapical pathology on imaging tab</div></div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--bg4);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);font-weight:600;flex-shrink:0;">3</div>
+          <div><div style="font-size:13px;font-weight:500;color:var(--text2);margin-bottom:3px;">Root canal therapy</div><div style="font-size:11px;color:var(--text3);">Pending diagnosis confirmation</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYTICS SCREEN -->
+<div id="screen-analytics" class="screen app-shell">
+  <div class="topbar">
+    <div class="topbar-logo"><span>Obsidian</span> Lab</div>
+    <nav class="topbar-nav">
+      <a onclick="switchTopNav(this, 'screen-sim')">Simulation</a>
+      <a class="active" onclick="switchTopNav(this, 'screen-analytics')">Analytics</a>
+      <a onclick="switchTopNav(this, 'screen-library')">Library</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="avatar">DS</div>
+    </div>
+  </div>
+  <div class="analytics-panel">
+    <div class="section-header">Overview — this month</div>
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Sessions completed</div><div class="metric-val">14</div><div class="metric-sub up">+3 from last month</div></div>
+      <div class="metric-card"><div class="metric-label">Avg. diagnosis score</div><div class="metric-val">78%</div><div class="metric-sub up">Up 6% this month</div></div>
+      <div class="metric-card"><div class="metric-label">Avg. session time</div><div class="metric-val">22m</div><div class="metric-sub">Target: &lt;30m</div></div>
+      <div class="metric-card"><div class="metric-label">Badges earned</div><div class="metric-val">5</div><div class="metric-sub">2 pending</div></div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Clinical reasoning breakdown</div>
+        <div class="bar-row"><span class="bar-label">Diagnosis accuracy</span><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--green);"></div></div><span class="bar-pct">78%</span></div>
+        <div class="bar-row"><span class="bar-label">Question quality</span><div class="bar-track"><div class="bar-fill" style="width:83%;background:var(--green);"></div></div><span class="bar-pct">83%</span></div>
+        <div class="bar-row"><span class="bar-label">Treatment planning</span><div class="bar-track"><div class="bar-fill" style="width:61%;background:var(--amber);"></div></div><span class="bar-pct">61%</span></div>
+        <div class="bar-row"><span class="bar-label">Emergency response</span><div class="bar-track"><div class="bar-fill" style="width:45%;background:var(--red);"></div></div><span class="bar-pct">45%</span></div>
+        <div class="bar-row" style="margin-bottom:0"><span class="bar-label">Time management</span><div class="bar-track"><div class="bar-fill" style="width:72%;background:var(--green);"></div></div><span class="bar-pct">72%</span></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Score trend — last 7 sessions</div>
+        <div class="mini-bars" id="trend-bars"></div>
+        <div class="mini-bar-labels" id="trend-labels"></div>
+      </div>
+    </div>
+
+    <div class="sessions-card">
+      <div class="chart-title">Recent sessions</div>
+      <div class="session-row"><span class="badge badge-pass">Pass</span><span class="session-name">Case #8821 — Irreversible pulpitis</span><span class="session-score">84%</span><span class="session-time">18m</span></div>
+      <div class="session-row"><span class="badge badge-review">Review</span><span class="session-name">Case #7743 — Ludwig's angina</span><span class="session-score">58%</span><span class="session-time">34m</span></div>
+      <div class="session-row"><span class="badge badge-pass">Pass</span><span class="session-name">Case #9102 — Pericoronitis</span><span class="session-score">91%</span><span class="session-time">21m</span></div>
+      <div class="session-row"><span class="badge badge-fail">Needs work</span><span class="session-name">Case #6610 — Airway emergency</span><span class="session-score">41%</span><span class="session-time">29m</span></div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">Competency profile</div>
+      <div class="comp-grid" id="comp-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIBRARY SCREEN -->
+<div id="screen-library" class="screen app-shell">
+  <div class="topbar">
+    <div class="topbar-logo"><span>Obsidian</span> Lab</div>
+    <nav class="topbar-nav">
+      <a onclick="switchTopNav(this, 'screen-sim')">Simulation</a>
+      <a onclick="switchTopNav(this, 'screen-analytics')">Analytics</a>
+      <a class="active" onclick="switchTopNav(this, 'screen-library')">Library</a>
+    </nav>
+    <div class="topbar-right"><div class="avatar">DS</div></div>
+  </div>
+  <div style="padding:24px;overflow-y:auto;flex:1;">
+    <div class="section-header" style="margin-bottom:16px;">Case library</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'" onclick="goTo('screen-sim')">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">CASE #8821 · ENDODONTICS</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;">Irreversible pulpitis</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Upper left molar — cold sensitivity with lingering pain</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:10px;background:var(--amber-dim);color:var(--amber);padding:2px 7px;border-radius:4px;border:1px solid rgba(245,166,35,0.3);">Intermediate</span>
+          <span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);">4 images</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'" onclick="showEmergency()">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">CASE #7743 · EMERGENCY</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;">Ludwig's angina</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Rapidly spreading submandibular infection with airway compromise</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:10px;background:var(--red-dim);color:var(--red);padding:2px 7px;border-radius:4px;border:1px solid var(--red-border);">Advanced</span>
+          <span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);">Emergency</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">CASE #9102 · ORAL SURGERY</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;">Pericoronitis</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Third molar inflammation with trismus — management and extraction planning</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:10px;background:var(--green-dim);color:var(--green);padding:2px 7px;border-radius:4px;border:1px solid var(--green-border);">Beginner</span>
+          <span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);">3 images</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">CASE #6610 · EMERGENCY</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;">Airway emergency</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Anaphylaxis post-anaesthesia — recognition and emergency management</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:10px;background:var(--red-dim);color:var(--red);padding:2px 7px;border-radius:4px;border:1px solid var(--red-border);">Advanced</span>
+          <span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);">Emergency</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">CASE #5501 · PERIODONTICS</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;">Aggressive periodontitis</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Young patient with rapid bone loss — radiographic and clinical assessment</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:10px;background:var(--amber-dim);color:var(--amber);padding:2px 7px;border-radius:4px;border:1px solid rgba(245,166,35,0.3);">Intermediate</span>
+          <span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);">6 images</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px dashed var(--border2);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;color:var(--text3);transition:color 0.15s;" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--text3)'">
+        <div style="font-size:24px;">+</div>
+        <div style="font-size:12px;">Create new case</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMERGENCY OVERLAY -->
+<div id="emergency-overlay" class="emergency-overlay">
+  <div class="emergency-primary app-shell">
+    <div class="topbar">
+      <div class="topbar-logo"><span>Obsidian</span> Lab</div>
+      <div class="topbar-right">
+        <div class="timer">00:12:34</div>
+        <button class="close-emergency" onclick="hideEmergency()">← Back to case</button>
+      </div>
+    </div>
+    <div class="sim-body">
+      <div class="sim-sidebar">
+        <div class="patient-card">
+          <div class="patient-avatar">👤</div>
+          <div class="patient-case">Case #8821</div>
+          <div class="patient-name">Mr. Arthur Miller</div>
+          <div style="font-size:10px;color:var(--amber);margin-top:4px;">Primary case — stable</div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="sidebar-nav-item active"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v9H9l-3 3v-3H2z"/></svg>Patient chart</div>
+          <div class="sidebar-nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3"/></svg>Imaging</div>
+        </div>
+        <div class="sidebar-bottom">
+          <button class="btn-emergency">⚠ Emergency protocol</button>
+        </div>
+      </div>
+      <div class="chat-panel" style="opacity:0.35;pointer-events:none;">
+        <div class="chat-header"><h2>Patient intake</h2><p>Primary case paused during emergency.</p></div>
+        <div class="chat-messages">
+          <div><div class="msg-sender">Mr. Arthur Miller</div><div class="msg-bubble">It's definitely the cold. I tried to have some iced tea this morning...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="emergency-panel">
+    <div class="emg-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="emg-badge">RED ALERT</span>
+          <span style="font-size:11px;color:var(--red);">Immediate intervention required</span>
+        </div>
+        <div class="emg-title">Ms. Elena Thompson</div>
+        <div class="emg-sub">ER Bay 04</div>
+      </div>
+      <div style="font-size:22px;font-weight:600;color:var(--red);margin-left:auto;">Critical</div>
+    </div>
+    <div class="emg-body">
+      <div class="emg-image">
+        <svg viewBox="0 0 260 160" width="260" height="160" xmlns="http://www.w3.org/2000/svg">
+          <rect width="260" height="160" fill="#060f06"/>
+          <ellipse cx="130" cy="80" rx="70" ry="55" fill="#0a1a0a" stroke="#1a3a1a" stroke-width="1"/>
+          <ellipse cx="130" cy="80" rx="45" ry="36" fill="#081408" stroke="#2a5a2a" stroke-width="0.8"/>
+          <ellipse cx="130" cy="75" rx="28" ry="30" fill="#0a180a" stroke="#3a7a3a" stroke-width="0.7"/>
+          <ellipse cx="118" cy="70" rx="12" ry="14" fill="#0d1e0d" stroke="#4a9a4a" stroke-width="0.5"/>
+          <ellipse cx="142" cy="72" rx="10" ry="12" fill="#0d1e0d" stroke="#4a9a4a" stroke-width="0.5"/>
+          <path d="M100 120 Q130 100 160 120" fill="none" stroke="#2a6a2a" stroke-width="1.5"/>
+          <text x="130" y="152" text-anchor="middle" font-size="9" fill="#2a5a2a" font-family="monospace">CBCT • Severe facial swelling detected</text>
+        </svg>
+        <div style="position:absolute;bottom:28px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:var(--amber);letter-spacing:0.08em;">⚠ SEVERE FACIAL SWELLING DETECTED</div>
+      </div>
+      <div class="emg-alert-quote">
+        <p>"I... I can't really open my mouth. My throat feels tight and it started moving down my neck fast."</p>
+        <div class="emg-distress">Urgent distress signal</div>
+      </div>
+      <div class="emg-vitals">
+        <div class="emg-vitals-title">Vitals — live feed</div>
+        <div class="emg-vitals-row">
+          <div class="emg-vital"><div class="emg-vital-val warn">118</div><div class="emg-vital-label">BPM</div></div>
+          <div class="emg-vital"><div class="emg-vital-val danger">91%</div><div class="emg-vital-label">O₂ sat</div></div>
+          <div class="emg-vital"><div class="emg-vital-val danger">24</div><div class="emg-vital-label">RR</div></div>
+        </div>
+      </div>
+      <div class="emg-log">
+        <time>09:18 AM</time> — Patient arrived with submandibular swelling. Airway compromise suspected.
+      </div>
+    </div>
+    <div class="emg-actions">
+      <button class="btn-emg-action btn-epinephrine">Administer epinephrine</button>
+      <button class="btn-emg-action btn-intubate">Call intubation team</button>
+    </div>
+    <div class="emg-input-bar">
+      <input class="emg-input" placeholder="Instruct staff for Ms. Thompson..."/>
+      <button class="btn-emg-send"><svg viewBox="0 0 16 16" fill="white"><path d="M1 8L15 1 9 15 7 9z"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── NAVIGATION ──
+  function goTo(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function switchTopNav(el, screenId) {
+    el.closest('nav').querySelectorAll('a').forEach(a => a.classList.remove('active'));
+    el.classList.add('active');
+    goTo(screenId);
+  }
+
+  function switchTab(tabId, navItem) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    navItem.classList.add('active');
+  }
+
+  // ── TIMER ──
+  let secs = 754;
+  setInterval(() => {
+    secs++;
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    document.querySelectorAll('#timer, .timer').forEach(el => el.textContent = '00:'+m+':'+s);
+  }, 1000);
+
+  // ── CHAT ──
+  const responses = [
+    "The pain is mostly in the back left, Doctor. It's been getting worse since yesterday.",
+    "I haven't tried hot drinks — I've been afraid to. Should I?",
+    "It started after I had some cold water at dinner two days ago. Before that, nothing.",
+    "Yes, it's very sensitive when I bite down on that side too.",
+    "My dentist mentioned I might need a root canal last year but I kept putting it off."
+  ];
+  let rIdx = 0;
+  function sendMsg() {
+    const input = document.getElementById('chat-input');
+    const val = input.value.trim();
+    if (!val) return;
+    const msgs = document.getElementById('chat-messages');
+    const docMsg = document.createElement('div');
+    docMsg.className = 'msg-doctor msg-in';
+    docMsg.innerHTML = '<div class="msg-bubble">'+val+'</div><div class="msg-time">'+getTime()+'</div>';
+    msgs.appendChild(docMsg);
+    input.value = '';
+    msgs.scrollTop = msgs.scrollHeight;
+    setTimeout(() => {
+      const typing = document.createElement('div');
+      typing.className = 'msg-in';
+      typing.innerHTML = '<div class="msg-sender">Mr. Arthur Miller</div><div class="typing"><span></span><span></span><span></span></div>';
+      msgs.appendChild(typing);
+      msgs.scrollTop = msgs.scrollHeight;
+      setTimeout(() => {
+        typing.remove();
+        const ptMsg = document.createElement('div');
+        ptMsg.className = 'msg-in';
+        ptMsg.innerHTML = '<div class="msg-sender">Mr. Arthur Miller</div><div class="msg-bubble">'+(responses[rIdx%responses.length])+'</div><div class="msg-time">'+getTime()+'</div>';
+        msgs.appendChild(ptMsg);
+        rIdx++;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 1400);
+    }, 600);
+  }
+  function getTime() {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // ── IMAGING ──
+  let imgZoomVal = 1;
+  let aiOn = true;
+  const imgLabels = [
+    'PA-UL7 — Periapical X-ray, upper left molar region',
+    'OPG-FULL — Panoramic radiograph, full arch',
+    'PHOTO-01 — Intraoral clinical photo, buccal view',
+    'CBCT-AX-L7 — Axial slice, apical region'
+  ];
+  function selectImg(idx, el) {
+    document.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('img-footer-info').textContent = imgLabels[idx];
+    imgZoomVal = 1;
+    document.getElementById('img-xray').style.transform = 'scale(1)';
+    document.getElementById('zoom-val').textContent = '100%';
+  }
+  function imgZoom(factor) {
+    imgZoomVal = Math.min(Math.max(imgZoomVal * factor, 0.5), 4);
+    document.getElementById('img-xray').style.transform = 'scale('+imgZoomVal+')';
+    document.getElementById('zoom-val').textContent = Math.round(imgZoomVal*100)+'%';
+  }
+  function imgFit() {
+    imgZoomVal = 1;
+    document.getElementById('img-xray').style.transform = 'scale(1)';
+    document.getElementById('zoom-val').textContent = '100%';
+  }
+  function toggleAIBoxes() {
+    aiOn = !aiOn;
+    const btn = document.getElementById('ai-toggle-btn');
+    btn.classList.toggle('on', aiOn);
+    document.getElementById('ai-boxes').style.opacity = aiOn ? '1' : '0';
+  }
+  function toggleTool(id) {
+    const btn = document.getElementById(id);
+    const wasActive = btn.classList.contains('active');
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    if (!wasActive) btn.classList.add('active');
+  }
+
+  // ── EMERGENCY ──
+  function showEmergency() {
+    document.getElementById('emergency-overlay').classList.add('active');
+  }
+  function hideEmergency() {
+    document.getElementById('emergency-overlay').classList.remove('active');
+  }
+
+  // ── ANALYTICS CHARTS ──
+  const scores = [62,74,58,80,84,91,78];
+  const labels = ['S1','S2','S3','S4','S5','S6','S7'];
+  const barsEl = document.getElementById('trend-bars');
+  const labelsEl = document.getElementById('trend-labels');
+  const maxH = 56;
+  scores.forEach((s,i) => {
+    const b = document.createElement('div');
+    b.className = 'mini-bar';
+    b.style.cssText = 'height:'+Math.round((s/100)*maxH)+'px;background:'+(s>=75?'var(--green)':s>=60?'var(--amber)':'var(--red)')+';';
+    barsEl.appendChild(b);
+    const l = document.createElement('div');
+    l.className = 'mini-bar-label';
+    l.textContent = labels[i];
+    labelsEl.appendChild(l);
+  });
+
+  // Competency rings
+  const comps = [
+    {name:'Endodontics',pct:80,color:'var(--green)'},
+    {name:'Oral surgery',pct:60,color:'var(--amber)'},
+    {name:'Emergency',pct:40,color:'var(--red)'},
+    {name:'Periodontics',pct:75,color:'var(--green)'},
+    {name:'Diagnosis',pct:84,color:'var(--green)'},
+    {name:'Radiology',pct:65,color:'var(--amber)'},
+  ];
+  const grid = document.getElementById('comp-grid');
+  const circ = 2*Math.PI*17;
+  comps.forEach(c => {
+    const cell = document.createElement('div');
+    cell.className = 'comp-cell';
+    const dash = (c.pct/100)*circ;
+    cell.innerHTML = `<div class="comp-name">${c.name}</div>
+      <svg width="44" height="44" viewBox="0 0 44 44" style="display:block;margin:0 auto 6px;">
+        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--bg4)" stroke-width="4"/>
+        <circle cx="22" cy="22" r="17" fill="none" stroke="${c.color}" stroke-width="4"
+          stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
+          stroke-dashoffset="${(circ*0.25).toFixed(1)}" stroke-linecap="round"/>
+      </svg>
+      <div class="comp-pct-val" style="color:${c.color}">${c.pct}%</div>`;
+    grid.appendChild(cell);
+  });
+</script>
+</body>
+</html>
